@@ -183,7 +183,12 @@ public class OSMViewProxy extends TiViewProxy {
     public void resume() {
         getView().resume();
     }
- 
+
+    @Kroll.method
+    public void loadCache(String filePath) {
+        getView().loadCache(filePath);
+    }
+
     @Kroll.method
     public long cacheCapacity() {
         return getView().cacheCapacity();

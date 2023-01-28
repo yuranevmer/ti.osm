@@ -4,6 +4,7 @@ import static org.appcelerator.kroll.util.KrollAssetHelper.getPackageName;
 
 import android.app.Activity;
 import android.content.ContextWrapper;
+import android.app.Activity;
 import android.content.res.Resources;
 import android.graphics.drawable.BitmapDrawable;
 import android.location.Location;
@@ -48,9 +49,17 @@ import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Set;
 
 import org.osmdroid.util.BoundingBox;
 import org.osmdroid.tileprovider.cachemanager.CacheManager;
+
+import android.os.Environment;
+import org.osmdroid.tileprovider.modules.ArchiveFileFactory;
+import org.osmdroid.tileprovider.modules.OfflineTileProvider;
+import org.osmdroid.tileprovider.util.SimpleRegisterReceiver;
+import org.osmdroid.tileprovider.tilesource.FileBasedTileSource;
+import org.osmdroid.tileprovider.modules.IArchiveFile;
 
 public class OSMView extends TiUIView implements MapEventsReceiver, LocationListener
 {
@@ -406,6 +415,56 @@ public class OSMView extends TiUIView implements MapEventsReceiver, LocationList
 
 		mapView.onResume();
 	}
+
+	public void loadCache(String filePath) {
+		//"/storage/emulated/0/Android/data/ballistic.calculator/files/test.mbtiles";
+		// String strFilepath = Environment.getExternalStorageDirectory().getPath() + "/test.mdtiles";
+        File f = new File(filePath);
+        String name = f.getName();
+		Log.d("filePath:", filePath + " " + f.exists());
+        if (!f.exists()) {
+            mapView.setTileSource(TileSourceFactory.DEFAULT_TILE_SOURCE);
+        } else {
+            name = name.substring(name.lastIndexOf(".") + 1);
+            if (name.length() == 0)
+				//skip files without extension
+                return;
+            if (ArchiveFileFactory.isFileExtensionRegistered(name)) {
+                try {
+        			Activity activity = TiApplication.getAppCurrentActivity();
+                    OfflineTileProvider tileProvider = new OfflineTileProvider(new SimpleRegisterReceiver(activity), new File[]{f});
+                    mapView.setTileProvider(tileProvider);
+                    String source = "";
+                    IArchiveFile[] archives = tileProvider.getArchives();
+                    if (archives.length > 0) {
+                        Set<String> tileSources = archives[0].getTileSources();
+						Log.i("OSM:6", new Boolean (tileSources.isEmpty()).toString());
+                        if (!tileSources.isEmpty()) {
+							//сюда не заходит при mbtiles
+							Log.i("OSM:7", "set source");
+							source = tileSources.iterator().next();
+                            mapView.setTileSource(FileBasedTileSource.getSource(source));
+                        } else {
+							Log.i("OSM8:", "isEmpty ;(");
+                            mapView.setTileSource(TileSourceFactory.DEFAULT_TILE_SOURCE);
+                        }
+                    } else {
+                        mapView.setTileSource(TileSourceFactory.DEFAULT_TILE_SOURCE);
+					}
+                    // Toast.makeText(this, "Using " + f.getAbsolutePath() + " ", Toast.LENGTH_LONG).show();
+                    mapView.invalidate();
+                    return;
+                } catch (Exception ex) {
+					Log.i("OSM:", "!!!xxxxx");
+                    // Log.i(Log.getStackTraceString(ex));
+                }
+        //         Toast.makeText(this, " did not have any files I can open! Try using MOBAC", Toast.LENGTH_LONG).show();
+            } else {
+                // Toast.makeText(mapView, " dir not found!", Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
 	
 	private CacheManager getCacheManager() {
 		if (cacheManager == null) {
